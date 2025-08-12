@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Renitte's Study Planner</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  body {
+    font-family: Arial, sans-serif;
+    background: linear-gradient(135deg, #1f1c2c, #928dab);
+    color: #eee;
+    margin: 0;
+    min-height: 100vh;
+    padding-top: 60px;
+  }
+  nav#topNav {
+    position: fixed; top: 0; left: 0; right: 0;
+    height: 60px;
+    background: rgba(45, 44, 61, 0.95);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.8);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.5rem; font-weight: 700; color: #a8a6ff;
+    z-index: 1000;
+  }
+  main {
+    max-width: 1200px;
+    margin: auto;
+    padding: 20px;
+  }
+  section#timetableSection {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 2em;
+  }
+  .table-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table { border-collapse: collapse; min-width: 900px; width: 100%; }
+  th, td {
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 10px;
+    text-align: center;
+    color: #eee;
+  }
+  th { background: rgba(28, 24, 255, 0.2); }
+  input {
+    width: 90%; padding: 4px; border-radius: 4px; border: none;
+  }
+  button {
+    border: none; border-radius: 4px; padding: 5px 8px; margin: 2px;
+    cursor: pointer;
+  }
+  .save-btn { background: #28a745; color: white; }
+  .edit-btn { background: #ffc107; color: black; }
+  .delete-btn { background: #dc3545; color: white; }
+  #exportBtn, #sendBtn {
+    background: #007bff; color: white; margin-top: 10px; padding: 8px 12px;
+  }
+  form {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 15px;
+    border-radius: 8px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+  }
+  form label { display: block; margin-bottom: 4px; font-weight: 600; }
+  form input, form select {
+    padding: 6px 8px;
+    border-radius: 6px;
+    border: none;
+    background: rgb(255, 255, 255);
+    color: black;
+  }
+  #addTaskBtn {
+    grid-column: 1 / -1; padding: 12px 0;
+    background: rgba(255, 255, 255, 0.3);
+    color: white; font-weight: 700; font-size: 1.1rem;
+  }
+  #taskList {
+    margin-top: 1.5em; padding: 15px; border-radius: 8px;
+    background: rgba(255, 255, 255, 0.05);
+  }
+  .task-item {
+    padding: 8px; margin-bottom: 8px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+  .countdown {
+    margin-left: 10px;
+    font-weight: bold;
+  }
+  #timetableSection table input {
+    background-color: white;
+    color: black;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 4px;
+    width: 90%;
+  }
+</style>
+<link rel="icon" type="image/png" href="icons/favicon.png">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#4caf50">
+
+</head>
+<body>
+
+<nav id="topNav">Renitte's Study Planner</nav>
+<main>
+  <section id="timetableSection">
+    <h2>Weekly Timetable</h2>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Sunday</th><th>Monday</th><th>Tuesday</th>
+            <th>Wednesday</th><th>Thursday</th><th>Friday</th>
+            <th>Saturday</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="table-body"></tbody>
+      </table>
+    </div>
+    <button onclick="addRow()">➕ Add Row</button>
+    <button id="exportBtn" onclick="exportTimetable()">📄 Export as Word</button>
+    <button id="sendBtn" onclick="sendDocument()">📤 Send Work Document</button>
+  </section>
+
+  <form id="taskForm">
+    <div>
+      <label for="taskTitle">Task Title</label>
+      <input type="text" id="taskTitle" required />
+    </div>
+    <div>
+      <label for="taskDay">Day</label>
+      <select id="taskDay" required>
+        <option value="">Select day</option>
+        <option>Sunday</option><option>Monday</option><option>Tuesday</option>
+        <option>Wednesday</option><option>Thursday</option><option>Friday</option>
+        <option>Saturday</option>
+      </select>
+    </div>
+    <div>
+      <label for="taskStartTime">Start Time</label>
+      <input type="time" id="taskStartTime" required />
+    </div>
+    <div>
+      <label for="taskDuration">Duration (mins)</label>
+      <input type="number" id="taskDuration" value="60" min="1" />
+    </div>
+    <button type="submit" id="addTaskBtn">Add Task</button>
+  </form>
+
+  <section id="taskList">
+    <h3>Added Tasks</h3>
+    <div id="tasksContainer"></div>
+  </section>
+</main>
+
+<script>
+let timetable = [];
+let tasks = JSON.parse(localStorage.getItem("taskList") || "[]");
+
+function saveTimetable() {
+  localStorage.setItem("studentTimetable", JSON.stringify(timetable));
+}
+function loadTimetable() {
+  let data = localStorage.getItem("studentTimetable");
+  if (data) {
+    timetable = JSON.parse(data);
+    timetable.forEach(rowData => createRow(rowData, false));
+  }
+}
+function createRow(rowData = [], saveAfter = true) {
+  let row = document.createElement("tr");
+  let rowSubjects = [];
+  for (let i = 0; i < 7; i++) {
+    let cell = document.createElement("td");
+    let subject = document.createElement("input");
+    subject.placeholder = "Subject";
+    subject.value = rowData[i]?.subject || "";
+    subject.disabled = rowData[i]?.locked || false;
+    let time = document.createElement("input");
+    time.type = "time";
+    time.value = rowData[i]?.time || "";
+    time.disabled = rowData[i]?.locked || false;
+    cell.appendChild(subject);
+    cell.appendChild(document.createElement("br"));
+    cell.appendChild(time);
+    row.appendChild(cell);
+    rowSubjects.push({ subject, time });
+  }
+  let actions = document.createElement("td");
+  let saveBtn = document.createElement("button");
+  saveBtn.textContent = "💾";
+  saveBtn.className = "save-btn";
+  saveBtn.onclick = function () {
+    let newData = [];
+    rowSubjects.forEach(pair => {
+      newData.push({ subject: pair.subject.value, time: pair.time.value, locked: true });
+      pair.subject.disabled = true;
+      pair.time.disabled = true;
+    });
+    let index = Array.from(document.getElementById("table-body").children).indexOf(row);
+    timetable[index] = newData;
+    saveTimetable();
+  };
+  let editBtn = document.createElement("button");
+  editBtn.textContent = "✏";
+  editBtn.className = "edit-btn";
+  editBtn.onclick = function () {
+    rowSubjects.forEach(pair => { pair.subject.disabled = false; pair.time.disabled = false; });
+  };
+  let deleteBtn = document.createElement("button");
+  deleteBtn.textContent = "🗑";
+  deleteBtn.className = "delete-btn";
+  deleteBtn.onclick = function () {
+    let index = Array.from(document.getElementById("table-body").children).indexOf(row);
+    timetable.splice(index, 1);
+    row.remove();
+    saveTimetable();
+  };
+  actions.appendChild(saveBtn);
+  actions.appendChild(editBtn);
+  actions.appendChild(deleteBtn);
+  row.appendChild(actions);
+  document.getElementById("table-body").appendChild(row);
+  if (saveAfter) {
+    let emptyData = rowSubjects.map(() => ({ subject: "", time: "", locked: false }));
+    timetable.push(emptyData);
+    saveTimetable();
+  }
+}
+function addRow() { createRow(); }
+
+function renderTasks() {
+  const container = document.getElementById("tasksContainer");
+  container.innerHTML = "";
+
+  tasks.forEach((task, index) => {
+    let div = document.createElement("div");
+    div.className = "task-item";
+
+    let endTime = new Date();
+    let [hours, minutes] = task.time.split(":").map(Number);
+    endTime.setHours(hours, minutes + parseInt(task.duration), 0, 0);
+
+    let textSpan = document.createElement("span");
+    textSpan.textContent = `${task.title} - ${task.day} at ${task.time} (${task.duration} mins)`;
+
+    let countdown = document.createElement("span");
+    countdown.className = "countdown";
+
+    let deleteBtn = document.createElement("button");
+    deleteBtn.textContent = "🗑";
+    deleteBtn.className = "delete-btn";
+    deleteBtn.onclick = () => {
+      tasks.splice(index, 1);
+      localStorage.setItem("taskList", JSON.stringify(tasks));
+      renderTasks();
+    };
+
+    function updateCountdown() {
+      let now = new Date();
+      let diff = endTime - now;
+      if (diff <= 0) {
+        countdown.textContent = "Task time passed";
+      } else {
+        let mins = Math.floor(diff / 60000);
+        let secs = Math.floor((diff % 60000) / 1000);
+        countdown.textContent = `${mins}m ${secs}s remaining`;
+      }
+    }
+    setInterval(updateCountdown, 1000);
+    updateCountdown();
+
+    div.appendChild(textSpan);
+    div.appendChild(countdown);
+    div.appendChild(deleteBtn);
+    container.appendChild(div);
+  });
+
+  localStorage.setItem("taskList", JSON.stringify(tasks));
+}
+
+document.getElementById("taskForm").addEventListener("submit", e => {
+  e.preventDefault();
+  let newTask = {
+    title: document.getElementById("taskTitle").value,
+    day: document.getElementById("taskDay").value,
+    time: document.getElementById("taskStartTime").value,
+    duration: document.getElementById("taskDuration").value
+  };
+  tasks.push(newTask);
+  renderTasks();
+  e.target.reset();
+});
+
+function exportTimetable() {
+  let tableHTML = document.querySelector("#timetableSection table").outerHTML;
+  let blob = new Blob(['\ufeff', tableHTML], { type: 'application/msword' });
+  let url = URL.createObjectURL(blob);
+  let link = document.createElement("a");
+  link.href = url;
+  link.download = "timetable.doc";
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+function sendDocument() {
+  let timetableData = JSON.parse(localStorage.getItem("studentTimetable") || "[]");
+  let taskData = JSON.parse(localStorage.getItem("taskList") || "[]");
+  let content = "<h1>Weekly Timetable</h1><table border='1'>" +
+    timetableData.map(row => "<tr>" +
+      row.map(cell => `<td>${cell.subject || ""}<br>${cell.time || ""}</td>`).join("") +
+    "</tr>").join("") +
+    "</table><h2>Tasks</h2><ul>" +
+    taskData.map(task => `<li>${task.title} - ${task.day} at ${task.time} (${task.duration} mins)</li>`).join("") +
+    "</ul>";
+  let blob = new Blob(['\ufeff', content], { type: 'application/msword' });
+  let url = URL.createObjectURL(blob);
+  let link = document.createElement("a");
+  link.href = url;
+  link.download = "work_document.doc";
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+loadTimetable();
+renderTasks();
+</script>
+<script>
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js")
+    .then(reg => console.log("SW registered", reg))
+    .catch(err => console.error("SW registration failed", err));
+}
+</script>
+</body>
+</html>
