@@ -4,6 +4,10 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Renitte's Study Planner</title>
+<!-- PWA Manifest -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2563eb">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
   *, *::before, *::after { box-sizing: border-box; }
   body {
@@ -106,9 +110,6 @@
 <link rel="icon" type="image/png" href="icons/icon-512.png">
 <link rel="shortcut icon" href="icons/logo.png">
 <link rel="icon" href="favicon.ico" type="image/x-icon">
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#4caf50">
-
 </head>
 <body>
 
@@ -337,12 +338,12 @@ function sendDocument() {
 
 loadTimetable();
 renderTasks();
-</script>
-<script>
-if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("sw.js")
-    .then(reg => console.log("SW registered", reg))
-    .catch(err => console.error("SW registration failed", err));
+
+// ----- Register Service Worker -----
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('service-worker.js')
+    .then(() => console.log("✅ Service Worker registered"))
+    .catch(err => console.error("Service Worker registration failed:", err));
 }
 </script>
 </body>
